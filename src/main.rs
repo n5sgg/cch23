@@ -1,6 +1,12 @@
 use std::num::ParseIntError;
 
-use axum::{extract::Path, http::StatusCode, routing::get, Router};
+use axum::{
+    extract::{Json, Path},
+    http::StatusCode,
+    routing::{get, post},
+    Router,
+};
+use serde::{Deserialize, Serialize};
 
 // -----------------------------------------------
 // Day -1: Get your winter boots on!
@@ -15,7 +21,6 @@ async fn internal_error() -> Result<(), StatusCode> {
     Err(StatusCode::INTERNAL_SERVER_ERROR)
 }
 // Day -1: End
-
 
 // -----------------------------------------------
 // Day 1: Packet "exclusive-cube" not found
@@ -72,13 +77,109 @@ mod tests {
 }
 // Day 1: End
 
+// -----------------------------------------------
+// Day 4: What do you call a serialized reindeer? Serdeer!
+// -----------------------------------------------
+// Task 1: Reindeer cheer
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct ReindeerGroupRequest {
+    name: String,
+    strength: i32,
+}
+
+async fn reindeer_group_strength(Json(payload): Json<Vec<ReindeerGroupRequest>>) -> String {
+    payload
+        .into_iter()
+        .fold(0, |acc, e| acc + e.strength)
+        .to_string()
+}
+
+// Task 2: Cursed candy eating contest
+#[derive(Deserialize)]
+struct ReindeerContestRequest {
+    name: String,
+    strength: i32,
+    speed: f32,
+    height: i32,
+    antler_width: i32,
+    snow_magic_power: i32,
+    favorite_food: String,
+    #[serde(rename = "cAnD13s_3ATeN-yesT3rdAy")]
+    candies_eaten_yesterday: i32,
+}
+
+#[derive(Serialize)]
+struct ReindeerContestResponse {
+    fastest: String,
+    tallest: String,
+    magician: String,
+    consumer: String,
+}
+
+impl Default for ReindeerContestResponse {
+    fn default() -> ReindeerContestResponse {
+        ReindeerContestResponse {
+            fastest: "".to_string(),
+            tallest: "".to_string(),
+            magician: "".to_string(),
+            consumer: "".to_string(),
+        }
+    }
+}
+
+async fn reindeer_contest(
+    Json(payload): Json<Vec<ReindeerContestRequest>>,
+) -> Json<ReindeerContestResponse> {
+    let mut fastest: f32 = std::f32::MIN;
+    let mut tallest: i32 = std::i32::MIN;
+    let mut magician: i32 = std::i32::MIN;
+    let mut consumer: i32 = std::i32::MIN;
+    let mut resp = ReindeerContestResponse::default();
+
+    for reindeer in payload {
+        if reindeer.speed > fastest {
+            fastest = reindeer.speed;
+            resp.fastest = format!(
+                "Speeding past the finish line with a strength of {} is {}",
+                reindeer.strength, reindeer.name
+            );
+        }
+        if reindeer.height > tallest {
+            tallest = reindeer.height;
+            resp.tallest = format!(
+                "{} is standing tall with his {} cm wide antlers",
+                reindeer.name, reindeer.antler_width
+            );
+        }
+        if reindeer.snow_magic_power > magician {
+            magician = reindeer.snow_magic_power;
+            resp.magician = format!(
+                "{} could blast you away with a snow magic power of {}",
+                reindeer.name, reindeer.snow_magic_power
+            );
+        }
+        if reindeer.candies_eaten_yesterday > consumer {
+            consumer = reindeer.candies_eaten_yesterday;
+            resp.consumer = format!(
+                "{} ate lots of candies, but also some {}",
+                reindeer.name, reindeer.favorite_food
+            );
+        }
+    }
+
+    Json(resp)
+}
+// Day 4: End
 
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
         .route("/", get(hello_world))
         .route("/-1/error", get(internal_error))
-        .route("/1/*ids", get(sled_id));
+        .route("/1/*ids", get(sled_id))
+        .route("/4/strength", post(reindeer_group_strength))
+        .route("/4/contest", post(reindeer_contest));
 
     Ok(router.into())
 }
